@@ -1,0 +1,71 @@
+"""ppstats — POST Python reimplementation of scipy.stats.
+
+Each function is a @guvectorize reduction kernel, written in fully-typed
+POST Python. The postpyc compiler lowers them to native shared-library
+code; in interpreted mode they run via the pure-Python broadcast loop.
+When the optional `ppstats_native` extension module is installed next to
+this package, matching public functions are replaced with native NumPy
+gufuncs at import time.
+
+Function families implemented
+------------------------------
+Descriptive (_descriptive) : mean, variance, gmean, hmean, moment,
+                              skew, kurtosis, sem, zscore
+
+Roadmap (not yet implemented)
+------------------------------
+Distributions (via ppspecial): norm, logistic, expon, uniform, laplace,
+                                cauchy pdf/cdf/ppf
+Blocked on compiler features : rvs (RNG model), fit (callable params),
+                                describe (structs)
+"""
+
+from importlib import import_module as _import_module
+
+from ppstats._descriptive import (
+    mean,
+    variance,
+    gmean,
+    hmean,
+    moment,
+    skew,
+    kurtosis,
+    sem,
+    zscore,
+)
+
+__all__ = [
+    # descriptive
+    "mean", "variance", "gmean", "hmean",
+    "moment", "skew", "kurtosis", "sem", "zscore",
+]
+
+__native_available__ = False
+__native_module__ = None
+
+
+def _prefer_native() -> None:
+    """Prefer compiled ufuncs when a sibling native extension is installed."""
+    global __native_available__, __native_module__
+
+    try:
+        native = _import_module("ppstats_native")
+    except ModuleNotFoundError as exc:
+        if exc.name == "ppstats_native":
+            return
+        raise
+
+    replaced = []
+    for name in __all__:
+        if hasattr(native, name):
+            globals()[name] = getattr(native, name)
+            replaced.append(name)
+
+    if replaced:
+        __native_available__ = True
+        __native_module__ = native
+
+
+_prefer_native()
+
+del _prefer_native, _import_module
