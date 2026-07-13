@@ -134,7 +134,9 @@ Needs discovered from ppstats. Items become issues in
   Interpreted mode works, so this is an interpreted/compiled divergence
   for valid POST source. Minimal reproducer: a `(n)->()` gufunc whose
   body does `out[0] = NAN; return`. Workaround in `_descriptive.py`:
-  NaN produced arithmetically as `(a[i]-a[i])/(a[i]-a[i])`. **To file.**
+  NaN produced arithmetically as `(a[i]-a[i])/(a[i]-a[i])`; revert when
+  fixed. **Filed:**
+  [postpython#36](https://github.com/openteams-ai/postpython/issues/36).
 
 ### Expected from Target 3
 

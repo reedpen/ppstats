@@ -104,8 +104,9 @@ PR #1 = ppspecial-style harness + descriptive-reduction gufuncs:
 
 - **Compiler bug found: `postpyc.math.NAN`/`INF` fail to lower** — emitted via `repr()`
   as bare `nan`/`inf` C identifiers; `nan` collides with libm's `double nan(const char*)`
-  → C compile error. Interpreted works. Draft issue (with minimal reproducer) at
-  `docs/issues/postpython-nan-lowering.md` — **not yet filed** (needs user's go-ahead).
+  → C compile error. Interpreted works. **Filed as
+  [postpython#36](https://github.com/openteams-ai/postpython/issues/36)** (reproducer
+  archived at `docs/issues/postpython-nan-lowering.md`).
   Workaround: NaN produced arithmetically `(a[i]-a[i])/(a[i]-a[i])`; revert when fixed.
 - Interpreted gufuncs effectively require numpy: the no-numpy fallback calls the kernel
   without its `out` parameter, so list inputs route through numpy → elements are

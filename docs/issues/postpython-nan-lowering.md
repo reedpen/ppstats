@@ -1,12 +1,7 @@
-# DRAFT — postpython issue (not yet filed)
+# postpython issue — FILED as [openteams-ai/postpython#36](https://github.com/openteams-ai/postpython/issues/36) (2026-07-13)
 
-File with:
-
-```bash
-gh issue create --repo openteams-ai/postpython \
-  --title "NAN/INF constants from postpyc.math fail to lower: emitted as bare 'nan'/'inf' identifiers in C" \
-  --body-file docs/issues/postpython-nan-lowering.md   # strip this header first
-```
+Title: "NAN/INF constants from postpyc.math fail to lower: emitted as bare
+'nan'/'inf' identifiers in C". Body archived below.
 
 ---
 
