@@ -4,7 +4,7 @@ import platform
 from pathlib import Path
 
 import ppspecial
-from postpyc.build import build_file
+from postpyc.build import build_file, BuildError
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -20,14 +20,19 @@ def main() -> int:
     for directory in (lib_dir, include_dir, share_dir):
         directory.mkdir(parents=True, exist_ok=True)
 
-    lib = build_file(
-        REPO_ROOT / "ppstats" / "__init__.py",
-        output=lib_dir / f"libppstats{LIB_SUFFIX}",
-        emit_header=True,
-        emit_manifest=True,
-        module_name="ppstats",
-        search_paths=[PPSPECIAL_ROOT],
-    )
+    try:
+        lib = build_file(
+            REPO_ROOT / "ppstats" / "__init__.py",
+            output=lib_dir / f"libppstats{LIB_SUFFIX}",
+            emit_header=True,
+            emit_manifest=True,
+            module_name="ppstats",
+            search_paths=[PPSPECIAL_ROOT],
+        )
+    except BuildError as exc:
+        print("prefix build FAILED:")
+        print(f"  {exc}")
+        return 1
     header = lib.with_suffix(".h")
     manifest = lib.with_suffix(".json")
     installed_header = include_dir / "ppstats.h"

@@ -53,6 +53,12 @@ SciPy references to `1e-12` relative on the test grid. Scales must be
 positive. Until POST Python lowers IEEE infinity constants, unbounded PPF
 endpoints use finite `±1e308` sentinels.
 
+NumPy is an optional extra (`ppstats[numpy]`), but interpreted execution of
+the descriptive **reduction** gufuncs currently requires it: postpyc 0.3.0's
+no-numpy fallback calls gufunc kernels without their output buffer
+(reproducer archived at `docs/issues/postpyc-nonumpy-gufunc-fallback.md`).
+The scalar distribution ufuncs run interpreted without numpy.
+
 ### Building
 
 ```bash

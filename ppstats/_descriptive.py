@@ -139,11 +139,18 @@ def variance(a: Array[Float64], out: Array[Float64]) -> None:
 def moment(a: Array[Float64], order: Int64, out: Array[Float64]) -> None:
     """k-th central moment: mean((a - mean(a))**k) for integer k.
 
-    moment(a, 0) == 1.0 and moment(a, 1) == 0.0 by definition (scipy
-    returns these exactly; here they fall out of the computation up to
-    rounding). Negative orders are reciprocal powers, as in scipy: a
-    zero deviation then yields inf/NaN.
+    moment(a, 0) == 1.0 and moment(a, 1) == 0.0 by definition; like scipy,
+    these are returned exactly rather than computed (numerically summing
+    the deviations leaves cancellation residue, e.g. for [1e20, 1, 1]).
+    Negative orders are reciprocal powers, as in scipy: a zero deviation
+    then yields inf/NaN.
     """
+    if order == 0:
+        out[0] = 1.0
+        return
+    if order == 1:
+        out[0] = 0.0
+        return
     m: Float64 = _mean(a)
     acc: Float64 = 0.0
     for i in range(len(a)):

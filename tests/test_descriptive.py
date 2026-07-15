@@ -4,6 +4,12 @@ Reference values are hardcoded, pre-computed with scipy 1.18.0 /
 numpy (cited per value) so the suite runs without scipy installed.
 Boolean-mode defaults follow scipy: skew is the biased Fisher–Pearson
 g1, kurtosis is the biased Fisher (excess) definition.
+
+Imports come from ``ppstats._descriptive`` (not the package root) so these
+tests always exercise the interpreted kernel source: the root namespace swaps
+in ``ppstats_native`` when a built extension is importable, which would make
+this suite silently validate a possibly stale binary instead.  Compiled
+behavior is covered by test_native_ext.py and test_native_abi.py.
 """
 
 import math
@@ -11,7 +17,7 @@ import warnings
 
 import pytest
 
-from ppstats import (
+from ppstats._descriptive import (
     mean,
     variance,
     gmean,
@@ -105,10 +111,17 @@ class TestHmean:
 
 class TestMoment:
     def test_order_zero_is_one(self):
-        assert close(moment(A1, 0), 1.0)                 # scipy.stats.moment(A1, order=0)
+        assert moment(A1, 0) == 1.0                      # scipy.stats.moment(A1, order=0)
 
     def test_order_one_is_zero(self):
         assert moment(A1, 1) == 0.0                      # scipy.stats.moment(A1, order=1)
+
+    def test_orders_zero_and_one_exact_under_cancellation(self):
+        # scipy returns 1.0 / 0.0 exactly by shortcut; summing deviations
+        # numerically would leave residue (~2730.67 for order 1 here).
+        prone = [1e20, 1.0, 1.0]
+        assert moment(prone, 0) == 1.0                   # scipy.stats.moment(prone, order=0)
+        assert moment(prone, 1) == 0.0                   # scipy.stats.moment(prone, order=1)
 
     def test_second(self):
         assert close(moment(A2, 2), 10.0)                # scipy.stats.moment(A2, order=2)

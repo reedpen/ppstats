@@ -40,14 +40,18 @@ PUBLIC = [
 def native(tmp_path_factory):
     from postpyc.build import build_file
     from pathlib import Path
+    import sysconfig
     import ppstats
 
     out_dir = tmp_path_factory.mktemp("ppstats-ext")
+    # Use the interpreter's extension suffix (.pyd on Windows) so
+    # spec_from_file_location resolves an extension loader everywhere.
+    ext_suffix = sysconfig.get_config_var("EXT_SUFFIX")
     ext = build_file(
         Path(ppstats.__file__),
         ext_module=True,
         module_name="ppstats_native_test",
-        output=out_dir / "ppstats_native_test.so",
+        output=out_dir / f"ppstats_native_test{ext_suffix}",
         search_paths=[Path(ppspecial.__file__).resolve().parent.parent],
     )
     spec = importlib.util.spec_from_file_location("ppstats_native_test", str(ext))

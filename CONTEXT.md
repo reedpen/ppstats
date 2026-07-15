@@ -144,3 +144,53 @@ PR #1 = ppspecial-style harness + descriptive-reduction gufuncs:
   endpoints use ±1e308, consistent with ppspecial, until postpython#36
   allows IEEE infinity constants. Full invalid-parameter behavior remains
   Target 2 compatibility-harness work.
+
+## Slice 2 review fixes (2026-07-15)
+
+- **`uniform_pdf` NaN hole fixed.** The support test written on raw `x`
+  (`x < loc or x > loc + scale`) compares False for NaN in any argument and
+  fell through to `1/scale` — the only kernel of 18 not propagating NaN.
+  Now standardizes to `z = (x-loc)/scale` first (scipy's structure) and
+  guards with `postpyc.math.isnan` (compiles fine; #36 is only about the
+  NAN/INF *constants*). `TestNanPropagation` pins all 18 kernels across all
+  three argument positions.
+- **Out-of-range q is pinned, not fixed.** `q <= 0` / `q >= 1` guards fold
+  invalid q into the endpoint result (scipy returns NaN); can't do better
+  until #36 lets kernels produce NaN. `TestPpfOutOfRangeQ` documents this.
+  NaN in loc/scale at *sentinel endpoints* (e.g. `laplace_ppf(0.0, nan, s)`)
+  also returns the sentinel — same debt.
+- **Reference suites now import the family modules directly**
+  (`ppstats._distributions` / `ppstats._descriptive`). Importing the package
+  root let a stale `ppstats_native*.so` in the repo root silently substitute
+  compiled kernels into the "interpreted" test task.
+- Known mode divergence outside the documented `scale > 0` boundary:
+  `scale = 0` raises ZeroDivisionError interpreted but returns NaN (with a
+  RuntimeWarning) compiled. Left as-is; Target 2 scope.
+- `build_prefix.py` now catches `BuildError` like its sibling scripts.
+
+## Slice 2 review fixes, round 2 (2026-07-15)
+
+- **`moment` orders 0 and 1 now return 1.0/0.0 exactly** (scipy's shortcut).
+  Numerically summing deviations left cancellation residue —
+  `moment([1e20, 1, 1], 1)` returned 2730.67. Early `return` inside a
+  guvectorize kernel compiles fine.
+- **A present-but-unloadable `ppstats_native` no longer breaks
+  `import ppstats`.** The guard only caught `ModuleNotFoundError` for
+  `ppstats_native` itself; an extension built against numpy in a numpy-free
+  env (or any ABI mismatch) propagated ImportError out of `import ppstats`.
+  Now warns and falls back to interpreted kernels. ppspecial's `__init__`
+  has the same narrow guard — worth an upstream PR.
+- **postpyc 0.3.0's no-numpy interpreted fallback cannot run gufuncs**
+  (`ufunc.py` `except ImportError: return fn(*args)` drops the `out`
+  parameter). Every descriptive reduction is unusable interpreted without
+  numpy; scalar `@vectorize` distribution kernels are fine. Not fixable in
+  ppstats without escape hatches. Reproducer drafted at
+  `docs/issues/postpyc-nonumpy-gufunc-fallback.md` (not yet filed); numpy
+  stays an optional extra (ppspecial parity), README documents the boundary.
+- **PPF sentinel policy centralized** in `_unbounded_endpoint(q)` — plain
+  POST helper, compiles when called from `@vectorize` kernels; single point
+  of change when postpython#36 lands.
+- `tests/test_native_ext.py` builds its throwaway extension with
+  `sysconfig.get_config_var("EXT_SUFFIX")` instead of a hardcoded `.so`
+  (Windows needs `.pyd` for `spec_from_file_location` to pick an extension
+  loader).

@@ -28,7 +28,11 @@ current convention.  Uniform endpoints remain finite by definition.
 
 from postyp import f64
 from postpyc import vectorize
-from postpyc.math import PI, atan, exp, expm1, fabs, log, log1p, tan
+from postpyc.math import PI, atan, exp, expm1, fabs, isnan, log, log1p, tan
+
+# Import from ppspecial._stats rather than the package root: ppspecial's
+# __init__ swaps in native ufuncs when ppspecial_native is installed, while
+# both interpreted execution and the POST compiler need the kernel source.
 from ppspecial._stats import expit, logit, ndtr, ndtri
 
 
@@ -40,6 +44,17 @@ __all__ = [
     "laplace_pdf", "laplace_cdf", "laplace_ppf",
     "cauchy_pdf", "cauchy_cdf", "cauchy_ppf",
 ]
+
+
+def _unbounded_endpoint(q: f64) -> f64:
+    """Sentinel PPF value at q <= 0 / q >= 1 for unbounded-support families.
+
+    ±1e308 stands in for -inf/+inf until postpython#36 lets kernels lower
+    IEEE infinity constants; when it lands, this is the one place to fix.
+    """
+    if q <= 0.0:
+        return -1.0e308
+    return 1.0e308
 
 
 @vectorize
@@ -59,10 +74,8 @@ def norm_cdf(x: f64, loc: f64, scale: f64) -> f64:
 @vectorize
 def norm_ppf(q: f64, loc: f64, scale: f64) -> f64:
     """Normal percent-point function via ppspecial.ndtri."""
-    if q <= 0.0:
-        return -1.0e308
-    if q >= 1.0:
-        return 1.0e308
+    if q <= 0.0 or q >= 1.0:
+        return _unbounded_endpoint(q)
     return loc + scale * ndtri(q)
 
 
@@ -82,10 +95,8 @@ def logistic_cdf(x: f64, loc: f64, scale: f64) -> f64:
 @vectorize
 def logistic_ppf(q: f64, loc: f64, scale: f64) -> f64:
     """Logistic percent-point function via ppspecial.logit."""
-    if q <= 0.0:
-        return -1.0e308
-    if q >= 1.0:
-        return 1.0e308
+    if q <= 0.0 or q >= 1.0:
+        return _unbounded_endpoint(q)
     return loc + scale * logit(q)
 
 
@@ -111,14 +122,20 @@ def expon_ppf(q: f64, loc: f64, scale: f64) -> f64:
     if q <= 0.0:
         return loc
     if q >= 1.0:
-        return 1.0e308
+        return _unbounded_endpoint(q)
     return loc - scale * log1p(-q)
 
 
 @vectorize
 def uniform_pdf(x: f64, loc: f64, scale: f64) -> f64:
     """Uniform probability density on ``loc <= x <= loc + scale``."""
-    if x < loc or x > loc + scale:
+    # Standardize first (as scipy does): a support test written directly on
+    # x compares False for NaN in any argument and would fall through to the
+    # in-support density instead of propagating NaN.
+    z: f64 = (x - loc) / scale
+    if isnan(z):
+        return z
+    if z < 0.0 or z > 1.0:
         return 0.0
     return 1.0 / scale
 
@@ -161,10 +178,8 @@ def laplace_cdf(x: f64, loc: f64, scale: f64) -> f64:
 @vectorize
 def laplace_ppf(q: f64, loc: f64, scale: f64) -> f64:
     """Laplace percent-point function."""
-    if q <= 0.0:
-        return -1.0e308
-    if q >= 1.0:
-        return 1.0e308
+    if q <= 0.0 or q >= 1.0:
+        return _unbounded_endpoint(q)
     if q < 0.5:
         return loc + scale * log(2.0 * q)
     return loc - scale * log(2.0 * (1.0 - q))
@@ -186,8 +201,6 @@ def cauchy_cdf(x: f64, loc: f64, scale: f64) -> f64:
 @vectorize
 def cauchy_ppf(q: f64, loc: f64, scale: f64) -> f64:
     """Cauchy percent-point function."""
-    if q <= 0.0:
-        return -1.0e308
-    if q >= 1.0:
-        return 1.0e308
+    if q <= 0.0 or q >= 1.0:
+        return _unbounded_endpoint(q)
     return loc + scale * tan(PI * (q - 0.5))

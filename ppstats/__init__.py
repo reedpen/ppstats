@@ -21,6 +21,7 @@ Blocked on compiler features : rvs (RNG model), fit (callable params),
 """
 
 from importlib import import_module as _import_module
+from warnings import warn as _warn
 
 from ppstats._descriptive import (
     mean,
@@ -77,10 +78,18 @@ def _prefer_native() -> None:
 
     try:
         native = _import_module("ppstats_native")
-    except ModuleNotFoundError as exc:
-        if exc.name == "ppstats_native":
+    except ImportError as exc:
+        if isinstance(exc, ModuleNotFoundError) and exc.name == "ppstats_native":
             return
-        raise
+        # Present but unloadable (missing numpy, ABI mismatch, ...) must
+        # degrade to the interpreted kernels, not break `import ppstats`.
+        _warn(
+            f"ppstats_native is present but failed to import ({exc}); "
+            "falling back to interpreted kernels",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        return
 
     replaced = []
     for name in __all__:

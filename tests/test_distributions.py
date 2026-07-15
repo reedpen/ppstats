@@ -1,9 +1,16 @@
-"""Continuous distribution kernels against scipy 1.18.0 references."""
+"""Continuous distribution kernels against scipy 1.18.0 references.
+
+Imports come from ``ppstats._distributions`` (not the package root) so these
+tests always exercise the interpreted kernel source: the root namespace swaps
+in ``ppstats_native`` when a built extension is importable, which would make
+this suite silently validate a possibly stale binary instead.  Compiled
+behavior is covered by test_native_ext.py and test_native_abi.py.
+"""
 
 import math
 import pytest
 
-from ppstats import (
+from ppstats._distributions import (
     cauchy_cdf,
     cauchy_pdf,
     cauchy_ppf,
@@ -140,3 +147,57 @@ class TestPpfEndpoints:
         assert math.isfinite(expon_ppf(1.0, 0.5, 2.0))
         assert uniform_ppf(0.0, 0.5, 2.0) == 0.5
         assert uniform_ppf(1.0, 0.5, 2.0) == 2.5
+
+
+ALL_KERNELS = [
+    norm_pdf, norm_cdf, norm_ppf,
+    logistic_pdf, logistic_cdf, logistic_ppf,
+    expon_pdf, expon_cdf, expon_ppf,
+    uniform_pdf, uniform_cdf, uniform_ppf,
+    laplace_pdf, laplace_cdf, laplace_ppf,
+    cauchy_pdf, cauchy_cdf, cauchy_ppf,
+]
+
+
+class TestNanPropagation:
+    """A NaN in any argument yields NaN, never a plausible finite value.
+
+    Interior values (x=1.5, q=0.8) keep PPF calls off the sentinel-endpoint
+    branches, whose q<=0 / q>=1 guards return constants before touching
+    loc/scale (see TestPpfOutOfRangeQ).
+    """
+
+    NAN = float("nan")
+
+    @pytest.mark.parametrize("fn", ALL_KERNELS, ids=lambda fn: fn.__name__)
+    def test_nan_value_or_q(self, fn):
+        assert math.isnan(fn(self.NAN, 0.5, 2.0))
+
+    @pytest.mark.parametrize("fn", ALL_KERNELS, ids=lambda fn: fn.__name__)
+    def test_nan_loc(self, fn):
+        value = 0.8 if fn.__name__.endswith("_ppf") else 1.5
+        assert math.isnan(fn(value, self.NAN, 2.0))
+
+    @pytest.mark.parametrize("fn", ALL_KERNELS, ids=lambda fn: fn.__name__)
+    def test_nan_scale(self, fn):
+        value = 0.8 if fn.__name__.endswith("_ppf") else 1.5
+        assert math.isnan(fn(value, 0.5, self.NAN))
+
+
+class TestPpfOutOfRangeQ:
+    """Pins current out-of-range behavior; scipy parity is deferred debt.
+
+    scipy returns NaN for q outside [0, 1].  The kernels cannot produce an
+    IEEE NaN constant until postpython#36 is fixed, so the q<=0 / q>=1
+    guards fold invalid q into the q=0 / q=1 result.  Revisit with the
+    Target 2 compatibility harness once #36 lands.
+    """
+
+    @pytest.mark.parametrize(
+        "ppf",
+        [norm_ppf, logistic_ppf, expon_ppf, uniform_ppf, laplace_ppf, cauchy_ppf],
+        ids=lambda fn: fn.__name__,
+    )
+    def test_invalid_q_folds_to_endpoint_result(self, ppf):
+        assert ppf(-0.5, 0.5, 2.0) == ppf(0.0, 0.5, 2.0)
+        assert ppf(1.5, 0.5, 2.0) == ppf(1.0, 0.5, 2.0)
