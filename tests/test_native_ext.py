@@ -13,10 +13,12 @@ import shutil
 import warnings
 
 import pytest
+import ppspecial
 
 np = pytest.importorskip("numpy")
 
 from ppstats import _descriptive as interp
+from ppstats import _distributions as dist_interp
 
 cc = shutil.which("cc") or shutil.which("clang") or shutil.which("gcc")
 
@@ -25,6 +27,12 @@ pytestmark = pytest.mark.skipif(cc is None, reason="No C compiler available")
 PUBLIC = [
     "mean", "variance", "gmean", "hmean",
     "moment", "skew", "kurtosis", "sem", "zscore",
+    "norm_pdf", "norm_cdf", "norm_ppf",
+    "logistic_pdf", "logistic_cdf", "logistic_ppf",
+    "expon_pdf", "expon_cdf", "expon_ppf",
+    "uniform_pdf", "uniform_cdf", "uniform_ppf",
+    "laplace_pdf", "laplace_cdf", "laplace_ppf",
+    "cauchy_pdf", "cauchy_cdf", "cauchy_ppf",
 ]
 
 
@@ -40,6 +48,7 @@ def native(tmp_path_factory):
         ext_module=True,
         module_name="ppstats_native_test",
         output=out_dir / "ppstats_native_test.so",
+        search_paths=[Path(ppspecial.__file__).resolve().parent.parent],
     )
     spec = importlib.util.spec_from_file_location("ppstats_native_test", str(ext))
     module = importlib.util.module_from_spec(spec)
@@ -117,3 +126,55 @@ def test_constant_input_is_nan_in_both_modes(native):
         assert np.isnan(native.kurtosis(const))
         assert np.isnan(interp.skew(const))
         assert np.isnan(interp.kurtosis(const))
+
+
+DISTRIBUTION_CASES = [
+    ("norm_pdf", np.array([-2.0, 0.0, 1.5]), 0.5, 2.0),
+    ("norm_cdf", np.array([-2.0, 0.0, 1.5]), 0.5, 2.0),
+    ("norm_ppf", np.array([0.0, 0.1, 0.5, 0.9, 1.0]), 0.5, 2.0),
+    ("logistic_pdf", np.array([-2.0, 0.0, 1.5]), 0.5, 2.0),
+    ("logistic_cdf", np.array([-2.0, 0.0, 1.5]), 0.5, 2.0),
+    ("logistic_ppf", np.array([0.0, 0.1, 0.5, 0.9, 1.0]), 0.5, 2.0),
+    ("expon_pdf", np.array([-1.0, 0.5, 2.0]), 0.5, 2.0),
+    ("expon_cdf", np.array([-1.0, 0.5, 2.0]), 0.5, 2.0),
+    ("expon_ppf", np.array([0.0, 0.1, 0.5, 0.9, 1.0]), 0.5, 2.0),
+    ("uniform_pdf", np.array([-1.0, 0.5, 2.0, 3.0]), 0.5, 2.0),
+    ("uniform_cdf", np.array([-1.0, 0.5, 2.0, 3.0]), 0.5, 2.0),
+    ("uniform_ppf", np.array([0.0, 0.1, 0.5, 0.9, 1.0]), 0.5, 2.0),
+    ("laplace_pdf", np.array([-2.0, 0.0, 1.5]), 0.5, 2.0),
+    ("laplace_cdf", np.array([-2.0, 0.0, 1.5]), 0.5, 2.0),
+    ("laplace_ppf", np.array([0.0, 0.1, 0.5, 0.9, 1.0]), 0.5, 2.0),
+    ("cauchy_pdf", np.array([-2.0, 0.0, 1.5]), 0.5, 2.0),
+    ("cauchy_cdf", np.array([-2.0, 0.0, 1.5]), 0.5, 2.0),
+    ("cauchy_ppf", np.array([0.0, 0.1, 0.5, 0.9, 1.0]), 0.5, 2.0),
+]
+
+
+@pytest.mark.parametrize("name,value,loc,scale", DISTRIBUTION_CASES)
+def test_distribution_compiled_matches_interpreted(native, name, value, loc, scale):
+    compiled = getattr(native, name)
+    interpreted = getattr(dist_interp, name)
+    np.testing.assert_allclose(
+        compiled(value, loc, scale),
+        interpreted(value, loc, scale),
+        rtol=1e-13,
+        atol=1e-300,
+    )
+
+
+def test_distribution_parameters_broadcast(native):
+    x = np.array([-1.0, 0.0, 1.0])
+    scale = np.array([1.0, 2.0, 4.0])
+    expected = dist_interp.logistic_cdf(x, 0.0, scale)
+    np.testing.assert_allclose(native.logistic_cdf(x, 0.0, scale), expected, rtol=1e-13)
+
+
+def test_distribution_cdf_ppf_array_roundtrip(native):
+    x = np.array([-2.0, -0.5, 0.0, 1.0, 3.0])
+    q = native.cauchy_cdf(x, 0.25, 1.5)
+    np.testing.assert_allclose(
+        native.cauchy_ppf(q, 0.25, 1.5),
+        x,
+        rtol=1e-13,
+        atol=1e-13,
+    )

@@ -11,11 +11,11 @@ Function families implemented
 ------------------------------
 Descriptive (_descriptive) : mean, variance, gmean, hmean, moment,
                               skew, kurtosis, sem, zscore
+Distributions (_distributions): norm, logistic, expon, uniform, laplace,
+                                 cauchy pdf/cdf/ppf
 
 Roadmap (not yet implemented)
-------------------------------
-Distributions (via ppspecial): norm, logistic, expon, uniform, laplace,
-                                cauchy pdf/cdf/ppf
+-----------------------------
 Blocked on compiler features : rvs (RNG model), fit (callable params),
                                 describe (structs)
 """
@@ -33,11 +33,38 @@ from ppstats._descriptive import (
     sem,
     zscore,
 )
+from ppstats._distributions import (
+    norm_pdf,
+    norm_cdf,
+    norm_ppf,
+    logistic_pdf,
+    logistic_cdf,
+    logistic_ppf,
+    expon_pdf,
+    expon_cdf,
+    expon_ppf,
+    uniform_pdf,
+    uniform_cdf,
+    uniform_ppf,
+    laplace_pdf,
+    laplace_cdf,
+    laplace_ppf,
+    cauchy_pdf,
+    cauchy_cdf,
+    cauchy_ppf,
+)
 
 __all__ = [
     # descriptive
     "mean", "variance", "gmean", "hmean",
     "moment", "skew", "kurtosis", "sem", "zscore",
+    # distributions
+    "norm_pdf", "norm_cdf", "norm_ppf",
+    "logistic_pdf", "logistic_cdf", "logistic_ppf",
+    "expon_pdf", "expon_cdf", "expon_ppf",
+    "uniform_pdf", "uniform_cdf", "uniform_ppf",
+    "laplace_pdf", "laplace_cdf", "laplace_ppf",
+    "cauchy_pdf", "cauchy_cdf", "cauchy_ppf",
 ]
 
 __native_available__ = False

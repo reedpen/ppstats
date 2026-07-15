@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 import ppstats
+import ppspecial
 
 cc = shutil.which("cc") or shutil.which("clang") or shutil.which("gcc")
 
@@ -66,6 +67,7 @@ def native_artifact(tmp_path_factory):
         output=out_dir / "ppstats.so",
         emit_header=True,
         emit_manifest=True,
+        search_paths=[Path(ppspecial.__file__).resolve().parent.parent],
     )
     return {
         "path": lib_path,
@@ -88,6 +90,14 @@ def _reduce(lib, export_name: str, values, *scalars):
     args.append(ctypes.c_int64(len(values)))
     fn(*args)
     return out_keep[0][0]
+
+
+def _scalar3(lib, export_name: str, value, loc, scale):
+    """Call a three-input scalar ufunc through its stable pp_* C symbol."""
+    fn = getattr(lib, f"pp_{export_name}")
+    fn.restype = ctypes.c_double
+    fn.argtypes = [ctypes.c_double, ctypes.c_double, ctypes.c_double]
+    return fn(value, loc, scale)
 
 
 A1 = [1.0, 2.0, 3.0, 4.0, 5.0]
@@ -151,6 +161,50 @@ def test_constant_input_yields_nan_through_c_abi(native_artifact):
     assert math.isnan(got)
 
 
+DISTRIBUTION_ABI_CASES = [
+    # scipy.stats.norm.pdf/cdf(1.5, loc=.5, scale=2); ppf(.8, loc=.5, scale=2)
+    ("norm_pdf", 1.5, 0.17603266338214976, 1e-13),
+    ("norm_cdf", 1.5, 0.6914624612740131, 2e-7),
+    ("norm_ppf", 0.8, 2.1832424671458286, 2e-7),
+    # scipy.stats.logistic.pdf/cdf(1.5, loc=.5, scale=2); ppf(.8, loc=.5, scale=2)
+    ("logistic_pdf", 1.5, 0.11750185610079725, 1e-13),
+    ("logistic_cdf", 1.5, 0.6224593312018546, 1e-13),
+    ("logistic_ppf", 0.8, 3.2725887222397816, 1e-13),
+    # scipy.stats.expon.pdf/cdf(1.5, loc=.5, scale=2); ppf(.8, loc=.5, scale=2)
+    ("expon_pdf", 1.5, 0.3032653298563167, 1e-13),
+    ("expon_cdf", 1.5, 0.3934693402873666, 1e-13),
+    ("expon_ppf", 0.8, 3.718875824868201, 1e-13),
+    # scipy.stats.uniform.pdf/cdf(1.5, loc=.5, scale=2); ppf(.8, loc=.5, scale=2)
+    ("uniform_pdf", 1.5, 0.5, 1e-13),
+    ("uniform_cdf", 1.5, 0.5, 1e-13),
+    ("uniform_ppf", 0.8, 2.1, 1e-13),
+    # scipy.stats.laplace.pdf/cdf(1.5, loc=.5, scale=2); ppf(.8, loc=.5, scale=2)
+    ("laplace_pdf", 1.5, 0.15163266492815836, 1e-13),
+    ("laplace_cdf", 1.5, 0.6967346701436833, 1e-13),
+    ("laplace_ppf", 0.8, 2.3325814637483107, 1e-13),
+    # scipy.stats.cauchy.pdf/cdf(1.5, loc=.5, scale=2); ppf(.8, loc=.5, scale=2)
+    ("cauchy_pdf", 1.5, 0.12732395447351627, 1e-13),
+    ("cauchy_cdf", 1.5, 0.6475836176504333, 1e-13),
+    ("cauchy_ppf", 0.8, 3.252763840942347, 1e-13),
+]
+
+
+@pytest.mark.parametrize(
+    "name,value,expected,tol",
+    DISTRIBUTION_ABI_CASES,
+    ids=[case[0] for case in DISTRIBUTION_ABI_CASES],
+)
+def test_package_shared_library_exports_distribution_kernels(
+    native_artifact,
+    name,
+    value,
+    expected,
+    tol,
+):
+    got = _scalar3(native_artifact["lib"], name, value, 0.5, 2.0)
+    assert got == pytest.approx(expected, abs=tol, rel=tol)
+
+
 def test_header_declares_reduction_exports(native_artifact):
     header = native_artifact["header"]
     assert "typedef struct __pp_array {" in header
@@ -163,6 +217,13 @@ def test_header_declares_reduction_exports(native_artifact):
         "void pp_zscore(__pp_array* a, int64_t ddof, __pp_array* out, int64_t pp_dim_n);"
         in header
     )
+
+
+def test_header_declares_distribution_exports(native_artifact):
+    header = native_artifact["header"]
+    assert "double pp_norm_pdf(double x, double loc, double scale);" in header
+    assert "double pp_logistic_cdf(double x, double loc, double scale);" in header
+    assert "double pp_cauchy_ppf(double q, double loc, double scale);" in header
 
 
 def test_manifest_describes_exported_abi(native_artifact):

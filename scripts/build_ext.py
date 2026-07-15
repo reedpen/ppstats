@@ -13,10 +13,12 @@ import sys
 from pathlib import Path
 
 from postpyc.build import build_file, BuildError
+import ppspecial
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PACKAGE_ENTRY = REPO_ROOT / "ppstats" / "__init__.py"
 MODULE_NAME = "ppstats_native"
+PPSPECIAL_ROOT = Path(ppspecial.__file__).resolve().parent.parent
 
 
 def main() -> int:
@@ -25,6 +27,7 @@ def main() -> int:
             PACKAGE_ENTRY,
             ext_module=True,
             module_name=MODULE_NAME,
+            search_paths=[PPSPECIAL_ROOT],
         )
     except BuildError as exc:
         print("extension build FAILED:")

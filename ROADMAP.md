@@ -36,8 +36,9 @@ Status: `Active`
 Acceptance criteria:
 
 - `pixi run -e dev test` passes (interpreted + compiled-extension tests).
-- `pixi run -e dev build-native` reports `_descriptive` and the full
-  package building natively with header/manifest sidecars.
+- `pixi run -e dev build-native` reports `_descriptive`, `_distributions`,
+  and the full package building natively with
+  header/manifest sidecars.
 - `pixi run -e dev build-ext` registers every public function as a
   `numpy.ufunc`.
 
@@ -83,17 +84,31 @@ single-element and empty vectors).
 
 ## Target 3: Distributions via ppspecial (cross-package POST)
 
-Status: `Ready` — the first cross-**package** POST dependency in the
+Status: `Done` (verified against postpyc 0.3.0 + ppspecial 0.1.2)
+
+The first cross-**package** POST dependency in the
 ecosystem; exercises postpython
 [#14](https://github.com/openteams-ai/postpython/issues/14) (dependency
 resolution) and [#13](https://github.com/openteams-ai/postpython/issues/13)
 (cross-module inlining).
 
-Planned first slice: `norm` pdf/cdf/ppf via ppspecial's `ndtr`/`ndtri`,
-`logistic` via `expit`/`logit`, then `expon`, `uniform`, `laplace`,
-`cauchy`. Declare ppspecial as a git dependency plus POST
-`search_paths` at build time until #14 lands. Module name to be chosen
-by family (see CONTEXT.md D4).
+Implemented as 18 scalar ufuncs in `_distributions`: `norm` pdf/cdf/ppf
+via ppspecial's `ndtr`/`ndtri`, `logistic` via `expit`/`logit`, plus
+`expon`, `uniform`, `laplace`, and `cauchy`. Every kernel takes explicit
+`loc` and `scale` positional inputs. ppspecial 0.1.2 is pinned as a Git
+dependency and all build targets pass its installed source root as a POST
+`search_path` until #14 lands.
+
+Accuracy: normal CDF inherits ppspecial's erfc error bound (<1.2e-7
+absolute), and normal CDF/PPF match scipy 1.18.0 references within 2e-7
+relative on the test cases. Direct-formula PDFs and all other CDF/PPFs
+match within 1e-12 relative. Compiled and interpreted modes agree within
+1e-13 relative across the test grid.
+
+Compatibility boundary: `scale > 0` and `q in [0, 1]` are current
+preconditions. Unbounded PPF endpoints use ±1e308 sentinels until
+postpython#36 permits IEEE infinities. Invalid-parameter/NaN behavior is
+part of Target 2.
 
 ## Target 4: Rank and Order Statistics
 

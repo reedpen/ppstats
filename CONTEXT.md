@@ -25,8 +25,8 @@ modeled on [ppspecial](../ppspecial). Governed by the
 
 Pure POST Python, no escape hatches · scipy is reference not a runtime dep (tests may use it
 optionally; prefer hardcoded reference values) · compiler gaps filed upstream with minimal
-reproducers · verify against postpython `main` · accuracy is a documented deliverable ·
-small reviewable landings · no binary wheels.
+reproducers · verify against released postpyc by default (`main` for unreleased features) ·
+accuracy is a documented deliverable · small reviewable landings · no binary wheels.
 
 ## Decisions
 
@@ -126,8 +126,21 @@ PR #1 = ppspecial-style harness + descriptive-reduction gufuncs:
 - Verified against PyPI postpyc 0.3.0. All four pixi tasks green
   (test / build-native / build-prefix / build-ext; ext registers all 9 as numpy.ufunc).
 
-## Slice 2 (later, not now)
+## Slice 2 implementation findings (2026-07-15)
 
-ppspecial-backed distributions (`norm`/`logistic`/`expon`/`uniform`/`laplace`/`cauchy`) in a
-family module — forces the cross-package dependency on ppspecial (git dep + POST search_paths,
-postpython #14). Own focused PR.
+- Added `_distributions.py` with 18 scalar ufuncs: pdf/cdf/ppf for
+  `norm`, `logistic`, `expon`, `uniform`, `laplace`, and `cauchy`.
+- Public names use `<family>_<method>` and take `(x_or_q, loc, scale)`;
+  all three inputs broadcast. This applies D2's explicit numeric-parameter
+  model to distribution parameters.
+- `norm_cdf`/`norm_ppf` call ppspecial `ndtr`/`ndtri`; logistic CDF/PPF
+  call `expit`/`logit`. ppspecial v0.1.2 is a Git dependency pinned at
+  `435ecfe`, and build/test entry points discover its installed source root
+  for POST `search_paths` (postpython #14 workaround).
+- Normal CDF/PPF references pass at 2e-7 relative (inherited erfc
+  approximation); direct-formula kernels pass at 1e-12. Interpreted and
+  compiled modes agree at 1e-13 on the test grid.
+- Current preconditions are positive scale and q in [0,1]. Unbounded PPF
+  endpoints use ±1e308, consistent with ppspecial, until postpython#36
+  allows IEEE infinity constants. Full invalid-parameter behavior remains
+  Target 2 compatibility-harness work.

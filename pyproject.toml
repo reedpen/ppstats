@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
     "postpyc>=0.3.0",
     "postyp>=0.3.0",
+    "ppspecial @ git+https://github.com/openteams-ai/ppspecial.git@435ecfe",
 ]
 
 [project.optional-dependencies]
@@ -75,5 +76,5 @@ dev = { features = ["dev"], solve-group = "default" }
 [tool.pixi.tasks]
 test = { cmd = "pytest tests/", description = "Run the test suite (interpreted mode)." }
 build-native = { cmd = "python scripts/build_native.py", description = "Compile each kernel module to a native shared library and report status." }
-build-prefix = { cmd = "postpyc build ppstats/__init__.py --prefix dist/prefix --module-name ppstats", description = "Build the libppstats package-manager layout under dist/prefix." }
+build-prefix = { cmd = "python scripts/build_prefix.py", description = "Build the libppstats package-manager layout under dist/prefix." }
 build-ext = { cmd = "python scripts/build_ext.py", description = "Build ppstats_native, an importable NumPy-ufunc extension module." }
