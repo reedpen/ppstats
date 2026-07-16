@@ -47,10 +47,14 @@ norm_cdf(1.5, 0.5, 2.0)       # 0.69146247... (x, loc, scale)
 logistic_ppf(0.8, 0.5, 2.0)   # 3.27258872... (q, loc, scale)
 ```
 
-Normal CDF/PPF accuracy is inherited from `ppspecial` and validated to
-`2e-7` relative on the reference cases; other distribution kernels match
-SciPy references to `1e-12` relative on the test grid. Scales must be
-positive. Until POST Python lowers IEEE infinity constants, unbounded PPF
+Normal CDF/PPF accuracy is inherited from `ppspecial`, whose ndtr/ndtri
+error bound is **absolute**, not relative: measured against SciPy 1.18 on a
+dense grid, `<1.2e-7` for the CDF and `~2.5e-7 * scale` for the PPF.
+Reference cases pass at `2e-7` relative, but near `norm_ppf`'s zero
+crossing (`q = ndtr(-loc/scale)`) relative error is unbounded — compare
+with `atol + rtol*|ref|`, never pure rtol. Other distribution kernels
+match SciPy references to `1e-12` relative on the test grid. Scales must
+be positive. Until POST Python lowers IEEE infinity constants, unbounded PPF
 endpoints use finite `±1e308` sentinels.
 
 NumPy is an optional extra (`ppstats[numpy]`), but interpreted execution of

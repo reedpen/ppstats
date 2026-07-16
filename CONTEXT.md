@@ -194,3 +194,25 @@ PR #1 = ppspecial-style harness + descriptive-reduction gufuncs:
   `sysconfig.get_config_var("EXT_SUFFIX")` instead of a hardcoded `.so`
   (Windows needs `.pyd` for `spec_from_file_location` to pick an extension
   loader).
+
+## Benchmark findings (2026-07-16, ../ppstats-bench)
+
+Standalone scipy-comparison harness (pixi env with scipy 1.18; separate
+project because scipy stays out of this repo's deps). All 27 kernels match
+scipy in both modes under an `atol + rtol*|ref|` comparison.
+
+- **Accuracy docs corrected: the ndtr/ndtri-inherited error is absolute,
+  not relative** (<1.2e-7 CDF; ~2.5e-7·scale PPF on a dense q grid vs
+  scipy 1.18). `norm_ppf` crosses zero at `q = ndtr(-loc/scale)`, where an
+  absolute error of ~2.6e-7 measured as 7.8e-3 *relative* — a pure-rtol
+  check spuriously fails there. README, `_distributions.py` docstring, and
+  ROADMAP now state the absolute error model; pinned by
+  `TestNorm.test_ppf_error_is_absolute_near_the_zero_crossing`. Target 2's
+  accuracy harness must use atol+rtol comparisons for all ppf kernels.
+- Perf vs base scipy (native, linux-64): `skew`/`kurtosis`/`moment` 32–48×
+  faster at every size; distributions 1.2–10× at N=1e6 (overhead-dominated
+  2–21× at N=1e3). Losses worth Target-2/upstream attention: `mean` 0.4×
+  on long vectors (numpy's pairwise summation is SIMD-optimized — feeds the
+  existing summation decision), `norm_ppf` 0.7× (scipy's ndtri is faster
+  *and* ~1e-9-accurate; candidate ppspecial upstream: AS241-style ndtri),
+  `gmean` 0.8× at small batches.

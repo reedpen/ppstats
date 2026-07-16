@@ -51,6 +51,17 @@ class TestNorm:
         assert norm_cdf(0.0, 0.0, 1.0) == 0.5
         assert close(norm_ppf(norm_cdf(1.25, 0.0, 1.0), 0.0, 1.0), 1.25, rtol=1e-9)
 
+    def test_ppf_error_is_absolute_near_the_zero_crossing(self):
+        # The ndtri-inherited error bound is absolute (~1.3e-7 here, times
+        # scale), not relative. norm_ppf crosses zero at q = ndtr(-loc/scale)
+        # (~0.40129 for loc=0.5, scale=2.0), where the reference value is
+        # arbitrarily small and relative error is unbounded — a pure-rtol
+        # check spuriously fails at ~8e-3 on this case. Accuracy checks for
+        # ppf kernels must compare atol + rtol*|ref|.
+        # scipy.stats.norm.ppf(0.4013, loc=0.5, scale=2.0)
+        assert close(norm_ppf(0.4013, 0.5, 2.0), 3.2718859991509586e-05,
+                     rtol=0.0, atol=1e-6)
+
 
 class TestLogistic:
     def test_pdf_cdf_ppf_with_location_and_scale(self):

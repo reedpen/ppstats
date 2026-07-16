@@ -13,9 +13,12 @@ Normal CDF/PPF delegate to ``ppspecial.ndtr`` / ``ppspecial.ndtri`` and
 logistic CDF/PPF to ``ppspecial.expit`` / ``ppspecial.logit``.  This is
 ppstats' first cross-package POST dependency.  The normal CDF inherits
 ppspecial's erfc approximation (<1.2e-7 absolute error); normal CDF/PPF are
-tested to 2e-7 relative on the reference cases.  All PDFs and the remaining
-CDF/PPF formulas use direct libm identities and match scipy 1.18.0 references
-to 1e-12 relative on the test grid.
+tested to 2e-7 relative on the reference cases.  That inherited bound is
+absolute — for ``norm_ppf`` roughly 2.5e-7 times ``scale`` — so near the
+PPF's zero crossing (``q = ndtr(-loc/scale)``) relative error is unbounded;
+accuracy checks must compare ``atol + rtol*|ref|``, never pure rtol.  All
+PDFs and the remaining CDF/PPF formulas use direct libm identities and match
+scipy 1.18.0 references to 1e-12 relative on the test grid.
 
 Domain conventions
 ------------------

@@ -101,8 +101,10 @@ dependency and all build targets pass its installed source root as a POST
 
 Accuracy: normal CDF inherits ppspecial's erfc error bound (<1.2e-7
 absolute), and normal CDF/PPF match scipy 1.18.0 references within 2e-7
-relative on the test cases. Direct-formula PDFs and all other CDF/PPFs
-match within 1e-12 relative. Compiled and interpreted modes agree within
+relative on the test cases. The inherited bound is absolute (~2.5e-7 ×
+scale for the PPF), so relative error is unbounded at `norm_ppf`'s zero
+crossing — Target 2's harness must compare `atol + rtol*|ref|`.
+Direct-formula PDFs and all other CDF/PPFs match within 1e-12 relative. Compiled and interpreted modes agree within
 1e-13 relative across the test grid.
 
 Compatibility boundary: `scale > 0` and `q in [0, 1]` are current
