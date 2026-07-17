@@ -9,3 +9,5 @@ build/
 .pytest_cache/
 .claude/
 .pixi/
+demo/executed_demo.ipynb
+demo/.ipynb_checkpoints/

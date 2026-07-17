@@ -76,6 +76,17 @@ pixi run -e dev build-ext       # ppstats_native, a NumPy-ufunc extension
 When `ppstats_native` is importable, `import ppstats` prefers the compiled
 gufuncs automatically (`ppstats.__native_available__`).
 
+### Demo
+
+The executable notebook compares ppstats with SciPy and exposes interactive
+accuracy and performance explorers. Build the extension with the notebook's
+Python ABI first, then launch it:
+
+```bash
+pixi run -e demo demo-build
+pixi run -e demo demo
+```
+
 Primary compiler pressure this package generates: cross-package POST dependencies (ppspecial), reduction gufuncs.
 
 ## Start here
